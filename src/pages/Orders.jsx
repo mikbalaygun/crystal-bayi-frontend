@@ -56,22 +56,30 @@ export default function Orders() {
   })
 
   const getStatusColor = (order) => {
-    // Bu backend'den gelecek status bilgisine göre değişecek
-    return 'bg-orange-100 text-orange-800' // Bekleyen durumu için
+    return 'bg-orange-100 text-orange-800'
   }
 
   const formatDate = (dateString) => {
     if (!dateString) return '-'
+    
     try {
-      // Backend'den DD-MM-YYYY formatında geliyor
-      const parts = dateString.split(/[-\/]/)
+      const cleaned = String(dateString).trim()
+      const parts = cleaned.replace(/[\.\/\-]/g, '.').split('.')
+      
       if (parts.length === 3) {
-        const date = new Date(parts[2], parts[1] - 1, parts[0])
-        return date.toLocaleDateString('tr-TR')
+        // Backend'den yıl.ay.gün formatında geliyor (2025.08.12)
+        if (parts[0].length === 4) {
+          const [year, month, day] = parts
+          return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`
+        }
+        // Gün.ay.yıl formatında gelirse direkt döndür
+        const [day, month, year] = parts
+        return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`
       }
-      return dateString
+      
+      return cleaned
     } catch (e) {
-      return dateString || '-'
+      return String(dateString)
     }
   }
 
@@ -103,19 +111,7 @@ export default function Orders() {
             </div>
           </div>
 
-          {/* Durum */}
-          <div className="w-full lg:w-48">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full py-2.5 px-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-kristal-500 focus:border-kristal-500 text-sm"
-            >
-              <option value="all">Tüm Durumlar</option>
-              <option value="pending">Bekleyen</option>
-              <option value="completed">Tamamlanan</option>
-              <option value="cancelled">İptal Edilen</option>
-            </select>
-          </div>
+          
 
           {/* Başlangıç Tarihi */}
           <div className="w-full lg:w-44">
@@ -218,14 +214,6 @@ export default function Orders() {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                {/* Order Actions */}
-                <div className="flex justify-end mt-3 pt-3 border-t border-gray-200">
-                  <Button variant="outline" size="sm">
-                    <EyeIcon className="w-4 h-4 mr-2" />
-                    Detayları Görüntüle
-                  </Button>
                 </div>
               </div>
             </Card>

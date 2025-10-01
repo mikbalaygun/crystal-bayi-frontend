@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { Card, CardContent, Spinner } from '../components/ui'
-import { useAuthStore } from '../stores'
+import { useAuthStore, useCartStore } from '../stores'
 import { useDashboardStats, useFavoriteProducts } from '../hooks/useApi'
 import { 
   CreditCardIcon, 
   ClockIcon, 
   CurrencyDollarIcon,
-  HeartIcon
+  HeartIcon,
+  ShoppingCartIcon
 } from '@heroicons/react/24/outline'
 
 // Para birimi formatlaması fonksiyonu
@@ -29,8 +31,12 @@ const formatPrice = (price, currency = 'TRY') => {
 
 export default function Dashboard() {
   const { user } = useAuthStore()
+  const { addItem, setIsOpen: setCartOpen } = useCartStore()
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: favoriteProducts, isLoading: favoritesLoading } = useFavoriteProducts()
+  
+  // Her ürün için ayrı adet state'i
+  const [quantities, setQuantities] = useState({})
 
   const statCards = [
     {
@@ -62,6 +68,36 @@ export default function Dashboard() {
     }
   ]
 
+  // Sepete ekle fonksiyonu
+  const handleQuickAdd = (product) => {
+    const quantity = quantities[product.stkno] || 1
+    
+    addItem({
+      stkno: product.stkno,
+      stokadi: product.stokadi,
+      fiyat: product.fiyat,
+      cinsi: product.cinsi || 'TRY',
+      birim: product.birim || 'ADET',
+      grupadi: product.grupadi,
+      kdv: product.kdv,
+      imageUrl: product.imageUrl,
+      adet: quantity
+    })
+    
+    // Adeti resetle
+    setQuantities(prev => ({ ...prev, [product.stkno]: 1 }))
+    
+    // Sepeti aç
+    setCartOpen(true)
+  }
+
+  // Adet değiştirme (max 999999 - 6 hane)
+  const handleQuantityChange = (stkno, value) => {
+    const numValue = parseInt(value) || 1
+    const clampedValue = Math.min(999999, Math.max(1, numValue))
+    setQuantities(prev => ({ ...prev, [stkno]: clampedValue }))
+  }
+
   return (
     <div className="space-y-8">
       
@@ -73,7 +109,6 @@ export default function Dashboard() {
         <p className="text-2xl text-kristal-600 font-semibold">
           {user?.company}
         </p>
-       
       </div>
 
       {/* Stats Grid */}
@@ -137,10 +172,10 @@ export default function Dashboard() {
               {favoriteProducts.slice(0, 6).map((product, index) => (
                 <div key={index} className="group bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 text-lg leading-tight group-hover:text-kristal-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 text-lg leading-tight group-hover:text-kristal-600 transition-colors line-clamp-2 flex-1 mr-2">
                       {product.stokadi}
                     </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
                       product.bakiye > 0 
                         ? 'bg-green-100 text-green-800 border border-green-200' 
                         : 'bg-red-100 text-red-800 border border-red-200'
@@ -149,15 +184,52 @@ export default function Dashboard() {
                     </span>
                   </div>
                   
-                  <p className="text-gray-600 text-sm mb-4">{product.grupadi}</p>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-1">{product.grupadi}</p>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold bg-gradient-to-r from-kristal-600 to-kristal-700 bg-clip-text text-transparent">
                       {formatPrice(product.fiyat, product.cinsi)}
                     </span>
                     <div className="w-8 h-8 bg-kristal-100 rounded-full flex items-center justify-center group-hover:bg-kristal-200 transition-colors">
                       <HeartIcon className="w-4 h-4 text-kristal-600" />
                     </div>
+                  </div>
+
+                  {/* Quick Add Section */}
+                  <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+                    <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => handleQuantityChange(product.stkno, (quantities[product.stkno] || 1) - 1)}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                        disabled={product.bakiye <= 0}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max="999999"
+                        value={quantities[product.stkno] || 1}
+                        onChange={(e) => handleQuantityChange(product.stkno, e.target.value)}
+                        className="w-20 px-2 py-2 text-center text-sm border-none focus:outline-none focus:ring-0"
+                        disabled={product.bakiye <= 0}
+                      />
+                      <button
+                        onClick={() => handleQuantityChange(product.stkno, (quantities[product.stkno] || 1) + 1)}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                        disabled={product.bakiye <= 0}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => handleQuickAdd(product)}
+                      disabled={product.bakiye <= 0}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-kristal-600 text-white rounded-lg hover:bg-kristal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ShoppingCartIcon className="w-4 h-4" />
+                      Sepete Ekle
+                    </button>
                   </div>
                 </div>
               ))}

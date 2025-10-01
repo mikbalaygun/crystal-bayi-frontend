@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, Link } from 'react-router-dom'
 import { 
   Bars3Icon, 
   XMarkIcon,
@@ -12,7 +12,8 @@ import {
   CubeIcon,
   ClipboardDocumentListIcon,
   DocumentTextIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline'
 import { useAuthStore, useCartStore } from '../../stores'
 import { useFavoriteProducts } from '../../hooks/useApi'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Ürünler', href: '/products', icon: CubeIcon, adminOnly: false },
   { name: 'Bekleyen Siparişler', href: '/orders', icon: ClipboardDocumentListIcon, adminOnly: false },
   { name: 'Ekstre', href: '/extract', icon: DocumentTextIcon, adminOnly: false },
+  { name: 'Ödeme', href: 'https://kristal.tahsilat.com.tr/', icon: CreditCardIcon, adminOnly: false, external: true },
   { name: 'İletişim', href: '/contact', icon: ChatBubbleLeftRightIcon, adminOnly: false },
 ]
 
@@ -40,40 +42,55 @@ export default function TopNavbar() {
       <Disclosure as="nav" className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         {({ open }) => (
           <>
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8">
               <div className="flex h-16 justify-between items-center">
                 
-                {/* Left side - Logo + Navigation */}
-                <div className="flex items-center">
-                  {/* Logo */}
-                  <div className="flex flex-shrink-0 items-center">
+                {/* Left side - Logo */}
+                <div className="flex items-center flex-shrink-0">
+                  <Link to="/dashboard" className="flex items-center group">
                     <img
                       src="/crystal-logo-small.png"
                       alt="Kristal Logo"
-                      className="h-10 w-auto"
+                      className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
                     />
-                  </div>
-                  
-                  {/* Desktop Navigation */}
-                  <div className="hidden md:ml-8 md:flex md:space-x-2">
-                    {filteredNavigation.map((item) => {
-                      const isActive = location.pathname === item.href
+                  </Link>
+                </div>
+                
+                {/* Center - Desktop Navigation */}
+                <div className="hidden lg:flex lg:items-center lg:space-x-1">
+                  {filteredNavigation.map((item) => {
+                    const isActive = location.pathname === item.href
+                    
+                    if (item.external) {
                       return (
-                        <NavLink
+                        <a
                           key={item.name}
-                          to={item.href}
-                          className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                            isActive
-                              ? 'bg-kristal-500 text-white shadow-md'
-                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                          }`}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         >
-                          <item.icon className={`mr-2 h-4 w-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                          <item.icon className="mr-2 h-4 w-4 text-gray-400" />
                           {item.name}
-                        </NavLink>
+                        </a>
                       )
-                    })}
-                  </div>
+                    }
+                    
+                    return (
+                      <NavLink
+                        key={item.name}
+                        to={item.href}
+                        className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                          isActive
+                            ? 'bg-kristal-500 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        <item.icon className={`mr-2 h-4 w-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                        {item.name}
+                      </NavLink>
+                    )
+                  })}
                 </div>
 
                 {/* Right side - Actions + User */}
@@ -173,7 +190,7 @@ export default function TopNavbar() {
                   </Menu>
 
                   {/* Mobile menu button */}
-                  <DisclosureButton className="md:hidden inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-kristal-500">
+                  <DisclosureButton className="lg:hidden inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-kristal-500">
                     <span className="sr-only">Ana menüyü aç</span>
                     {open ? (
                       <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
@@ -186,10 +203,27 @@ export default function TopNavbar() {
             </div>
 
             {/* Mobile Navigation Panel */}
-            <DisclosurePanel className="md:hidden border-t border-gray-200 bg-white">
+            <DisclosurePanel className="lg:hidden border-t border-gray-200 bg-white">
               <div className="space-y-2 px-4 pb-4 pt-3">
                 {filteredNavigation.map((item) => {
                   const isActive = location.pathname === item.href
+                  
+                  // Harici link kontrolü
+                  if (item.external) {
+                    return (
+                      <a
+                        key={item.name}
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative flex items-center px-4 py-3 text-base font-medium rounded-xl transition-all duration-300 text-gray-600 hover:bg-gray-50 hover:text-kristal-700"
+                      >
+                        <item.icon className="mr-4 h-5 w-5 transition-all duration-300 text-gray-400" />
+                        <span className="relative z-10">{item.name}</span>
+                      </a>
+                    )
+                  }
+                  
                   return (
                     <NavLink
                       key={item.name}
