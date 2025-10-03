@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   MagnifyingGlassIcon,
-  FunnelIcon,
   Squares2X2Icon,
   ListBulletIcon,
 } from '@heroicons/react/24/outline'
@@ -10,7 +9,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useFavoriteProducts, useAddToFavorites, useRemoveFromFavorites, useProductGroups, useProducts } from '../hooks/useApi'
 import { useCartStore } from '../stores'
 import ProductCard from '../components/ProductCard'
-import ProductFilters from '../components/ProductFilters'
 import productService from '../services/productService'
 
 export default function Products() {
@@ -20,46 +18,47 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedSubCategory, setSelectedSubCategory] = useState('')
   const [viewMode, setViewMode] = useState('grid')
-  const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('name')
   const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 24
 
   const { addItem } = useCartStore()
 
-  // Ürün kodu pattern detection
   const detectProductCode = (query) => {
     const trimmed = query.trim()
-    // Ürün kodları genelde: sayısal, 3-8 karakter, bazen 00 ile başlar
     const isNumeric = /^\d+$/.test(trimmed)
     const isValidLength = trimmed.length >= 3 && trimmed.length <= 8
     const startsWithZero = trimmed.startsWith('0')
-    
     return isNumeric && (isValidLength || startsWithZero)
   }
 
-  // Debounce + pattern detection
   useEffect(() => {
     const t = setTimeout(() => {
       const trimmed = searchQuery.trim()
       setDebouncedQuery(trimmed)
       setIsProductCodeSearch(detectProductCode(trimmed))
-    }, detectProductCode(searchQuery.trim()) ? 200 : 300) // Ürün kodu için daha hızlı
+    }, detectProductCode(searchQuery.trim()) ? 200 : 300)
     return () => clearTimeout(t)
   }, [searchQuery])
 
   const isSearching = debouncedQuery.length >= 2
 
-  // Kategoriler
   const { data: categories = [] } = useProductGroups()
 
-  // FAVORİLER
+  // Alt kategoriler - ana kategori seçildiğinde yüklenir
+  const { data: subCategoriesResp } = useQuery({
+    queryKey: ['sub-categories', selectedCategory],
+    queryFn: () => selectedCategory ? productService.getSubGroups(selectedCategory) : Promise.resolve({ success: true, data: [] }),
+    enabled: !!selectedCategory,
+  })
+
+  const subCategories = subCategoriesResp?.success ? subCategoriesResp.data : []
+
   const { data: favoriteProducts = [] } = useFavoriteProducts()
   const addToFavoritesMutation = useAddToFavorites()
   const removeFromFavoritesMutation = useRemoveFromFavorites()
   const isFavorite = (stkno) => favoriteProducts?.some(f => f.stkno === stkno) || false
 
-  // LISTE (Mongo)
   const {
     data: listResp,
     isLoading: listLoading
@@ -73,7 +72,6 @@ export default function Products() {
     { enabled: !isSearching }
   )
 
-  // ARAMA (Mongo /products/search)
   const {
     data: searchResp,
     isLoading: searchLoading
@@ -92,7 +90,6 @@ export default function Products() {
     enabled: isSearching
   })
 
-  // ETKİN KAYNAK
   const effectiveLoading = isSearching ? searchLoading : listLoading
   const effectiveProducts = useMemo(() => {
     if (isSearching) {
@@ -112,7 +109,6 @@ export default function Products() {
     ? (searchResp?.totalMatched ?? effectiveProducts.length)
     : (effectivePagination?.totalProducts ?? effectiveProducts.length)
 
-  // Liste modunda client-side sort; aramada skor order korunur
   const sortedProducts = useMemo(() => {
     if (isSearching) return effectiveProducts
     const copy = [...effectiveProducts]
@@ -127,7 +123,6 @@ export default function Products() {
     }
   }, [isSearching, effectiveProducts, sortBy])
 
-  // Handlers
   const handleCategoryChange = (val) => {
     setSelectedCategory(val)
     setSelectedSubCategory('')
@@ -152,7 +147,6 @@ export default function Products() {
     }
   }
 
-  // Grid classes
   const getGridClasses = () => {
     if (viewMode === 'grid') {
       return 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
@@ -163,7 +157,6 @@ export default function Products() {
   return (
     <div className="space-y-4">
       
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Ürünler</h1>
@@ -171,7 +164,6 @@ export default function Products() {
         </div>
         
         <div className="flex items-center space-x-3 mt-3 sm:mt-0">
-          {/* Ürün Kodu Arama Bilgisi */}
           <div className="hidden lg:flex items-center bg-blue-50 text-blue-700 px-3 py-2 rounded-lg border border-blue-200">
             <svg className="w-4 h-4 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -181,7 +173,6 @@ export default function Products() {
             </span>
           </div>
           
-          {/* Grid/List Butonları */}
           <div className="flex items-center space-x-2">
             <Button
               variant={viewMode === 'grid' ? 'primary' : 'outline'}
@@ -201,58 +192,53 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Search & Filters */}
       <Card className="p-4">
         <div className="flex flex-col lg:flex-row gap-3">
-          {/* Enhanced Search */}
           <div className="flex-1">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="relative flex items-center">
+              <MagnifyingGlassIcon className="absolute left-3 h-5 w-5 text-gray-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder={isProductCodeSearch ? "Ürün kodu: " + debouncedQuery + " ..." : "Ürün adı veya kodu ara..."}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className={`pl-10 pr-4 py-2.5 w-full border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-kristal-500 transition-all text-sm ${
+                className={`pl-10 pr-4 py-3 w-full border rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-kristal-500 transition-all text-sm ${
                   isProductCodeSearch 
                     ? 'border-blue-300 bg-blue-50 focus:bg-blue-50' 
                     : 'border-gray-300'
                 }`}
               />
-              
-              {/* Search Status */}
-              {isSearching && (
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    {isProductCodeSearch ? (
-                      <span className="text-blue-600 font-medium flex items-center">
-                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                        </svg>
-                        Ürün kodu aranıyor: {debouncedQuery}
-                      </span>
-                    ) : (
-                      `"${debouncedQuery}" aranıyor...`
-                    )}
-                  </span>
-                  {isProductCodeSearch && (
-                    <span className="text-xs text-blue-500 bg-blue-100 px-2 py-1 rounded">
-                      Kod Araması
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {/* Search Hint */}
-              {!isSearching && (
-                <div className="mt-1 text-xs text-gray-500">
-                  💡 İpucu: Ürün kodunu (örn: 00643, 12345) doğrudan yazabilirsiniz
-                </div>
-              )}
             </div>
+            
+            {isSearching && (
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  {isProductCodeSearch ? (
+                    <span className="text-blue-600 font-medium flex items-center">
+                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                      </svg>
+                      Ürün kodu aranıyor: {debouncedQuery}
+                    </span>
+                  ) : (
+                    `"${debouncedQuery}" aranıyor...`
+                  )}
+                </span>
+                {isProductCodeSearch && (
+                  <span className="text-xs text-blue-500 bg-blue-100 px-2 py-1 rounded">
+                    Kod Araması
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {!isSearching && (
+              <div className="mt-2 text-xs text-gray-500">
+                💡 İpucu: Ürün kodunu (örn: 00643, 12345) doğrudan yazabilirsiniz
+              </div>
+            )}
           </div>
 
-          {/* Clean Category Selector */}
           <div className="w-full lg:w-56">
             <select
               value={selectedCategory}
@@ -268,7 +254,24 @@ export default function Products() {
             </select>
           </div>
 
-          {/* Sort */}
+          {/* Alt Kategori - Sadece ana kategori seçiliyken göster */}
+          {selectedCategory && subCategories && subCategories.length > 0 && (
+            <div className="w-full lg:w-56">
+              <select
+                value={selectedSubCategory}
+                onChange={(e) => handleSubCategoryChange(e.target.value)}
+                className="w-full py-3 px-4 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-kristal-500 focus:border-kristal-500 focus:bg-white text-sm font-medium text-gray-700 transition-colors cursor-pointer"
+              >
+                <option value="" className="font-normal">Tüm Alt Kategoriler</option>
+                {subCategories.map((subCat) => (
+                  <option key={subCat.grpkod} value={subCat.grpkod} className="font-normal">
+                    {subCat.grpadi}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="w-full lg:w-44">
             <select
               value={sortBy}
@@ -282,25 +285,9 @@ export default function Products() {
               <option value="stock">Stoka Göre</option>
             </select>
           </div>
-
-          <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
-            <FunnelIcon className="w-4 h-4 mr-1" />
-            Filtreler
-          </Button>
         </div>
-
-        {showFilters && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <ProductFilters
-              selectedCategory={selectedCategory}
-              selectedSubCategory={selectedSubCategory}
-              onSubCategoryChange={handleSubCategoryChange}
-            />
-          </div>
-        )}
       </Card>
 
-      {/* Products */}
       {effectiveLoading ? (
         <div className="flex justify-center py-12">
           <Spinner size="lg" text="Ürünler yükleniyor..." />
@@ -320,7 +307,6 @@ export default function Products() {
         </div>
       )}
 
-      {/* Empty State */}
       {!effectiveLoading && (!Array.isArray(sortedProducts) || sortedProducts.length === 0) && (
         <Card className="p-8 text-center">
           <div className="text-gray-500">
@@ -338,7 +324,6 @@ export default function Products() {
         </Card>
       )}
 
-      {/* Pagination */}
       {effectivePagination?.totalPages > 1 && (
         <Card className="p-3">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
