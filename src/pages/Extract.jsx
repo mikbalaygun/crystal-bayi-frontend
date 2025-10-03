@@ -19,7 +19,7 @@ import moment from 'moment'
 const useExtractDetail = (fkn) => {
   return useQuery({
     queryKey: ['extract-detail', fkn],
-    enabled: !!fkn, // sadece fkn varsa fetch et
+    enabled: !!fkn,
     queryFn: async () => {
       const { data } = await apiClient.get(`/extract/${fkn}`)
       const rows = data?.success ? data.data : []
@@ -31,31 +31,22 @@ const useExtractDetail = (fkn) => {
 /** Güvenli lowercase */
 const sl = (v) => (v ?? '').toString().toLowerCase()
 
-/** (Opsiyonel) Sadece belirli işleme detay göster */
-const canShowDetail = (t) => {
-  const x = sl(t)
-  return x.includes('satış faturası') || x.includes('alış faturası') || x.includes('iade')
-  // her satıra detay istersen: return true
-}
-
 export default function Extract() {
   const { user } = useAuthStore()
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedExtract, setSelectedExtract] = useState(null)
-  const [currentView, setCurrentView] = useState('list') // 'list' | 'detail'
+  const [currentView, setCurrentView] = useState('list')
   const [showFilters, setShowFilters] = useState(false)
-  const [transactionFilter, setTransactionFilter] = useState('all') // 'all'|'sales'|'payment'|'return'
-  const [detailFkn, setDetailFkn] = useState(null) // << ekstre detay fkn
+  const [transactionFilter, setTransactionFilter] = useState('all')
+  const [detailFkn, setDetailFkn] = useState(null)
 
-  // Detay verisini her render'da aynı sırada çağır (enabled ile kontrol)
   const {
     data: detailRows = [],
     isLoading: detailLoading,
     error: detailError,
   } = useExtractDetail(detailFkn)
 
-  // Liste API çağrısı
   const { data: extractResponse, isLoading, error, refetch } = useQuery({
     queryKey: ['extract', dateFilter.start, dateFilter.end],
     queryFn: async () => {
@@ -72,7 +63,6 @@ export default function Extract() {
 
   const extractData = extractResponse || []
 
-  // Filtreleme + sıralama
   const filteredData = extractData
     .filter((item) => {
       if (searchQuery) {
@@ -134,14 +124,13 @@ export default function Extract() {
   if (currentView === 'detail' && selectedExtract) {
     return (
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
               onClick={() => {
                 setCurrentView('list')
-                setDetailFkn(null) // hook sırası sabit, data fetch durur
+                setDetailFkn(null)
               }}
             >
               <ArrowLeftIcon className="w-4 h-4 mr-2" />
@@ -156,9 +145,7 @@ export default function Extract() {
           </div>
         </div>
 
-        {/* Sol: Genel Bilgiler  |  Sağ: Hareket Kalemleri */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* SOL */}
           <Card className="p-6">
             <div className="flex items-center space-x-3 mb-6">
               <div className="p-3 bg-blue-100 rounded-xl">
@@ -196,7 +183,6 @@ export default function Extract() {
             </dl>
           </Card>
 
-          {/* SAĞ: Hareket Kalemleri */}
           <Card className="p-6">
             <div className="flex items-center space-x-3 mb-6">
               <div className="p-3 bg-purple-100 rounded-xl">
@@ -254,7 +240,6 @@ export default function Extract() {
   /** LİSTE GÖRÜNÜMÜ */
   return (
     <div className="space-y-4">
-      {/* Kompakt Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hesap Ekstresi</h1>
@@ -262,10 +247,8 @@ export default function Extract() {
         </div>
       </div>
 
-      {/* Kompakt Filters */}
       <Card className="p-4">
         <div className="flex flex-col lg:flex-row gap-3">
-          {/* Arama */}
           <div className="flex-1">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -279,7 +262,6 @@ export default function Extract() {
             </div>
           </div>
 
-          {/* İşlem Türü */}
           <div className="w-full lg:w-48">
             <select
               value={transactionFilter}
@@ -293,7 +275,6 @@ export default function Extract() {
             </select>
           </div>
 
-          {/* Başlangıç Tarihi */}
           <div className="w-full lg:w-44">
             <Input
               type="date"
@@ -304,7 +285,6 @@ export default function Extract() {
             />
           </div>
 
-          {/* Bitiş Tarihi */}
           <div className="w-full lg:w-44">
             <Input
               type="date"
@@ -315,7 +295,6 @@ export default function Extract() {
             />
           </div>
 
-          {/* Filtrele Butonu */}
           <Button onClick={handleFilter} size="sm" className="px-4">
             <CalendarDaysIcon className="w-4 h-4 mr-1" />
             Filtrele
@@ -323,7 +302,6 @@ export default function Extract() {
         </div>
       </Card>
 
-      {/* Extract Table */}
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Spinner size="lg" text="Ekstre yükleniyor..." />
@@ -334,65 +312,65 @@ export default function Extract() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">İşlem Türü</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Açıklama</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Belge No</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vade</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Borç</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Alacak</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Bakiye</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">İşlem</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Açıklama</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Belge</th>
+                  <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vade</th>
+                  <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Borç</th>
+                  <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Alacak</th>
+                  <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bakiye</th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase w-16"></th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredData.map((item, index) => {
                   const typeInfo = getTransactionTypeInfo(item.wisad)
                   const IconComponent = typeInfo.icon
-                  const showDetail = true // veya canShowDetail(item.wisad)
 
                   return (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-900">
                         {formatDate(item.wtarih)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-3">
-                          <IconComponent className="w-5 h-5 text-gray-400" />
-                          <Badge className={`${typeInfo.color} px-3 py-1 rounded-full font-medium text-xs`}>
-                            {typeInfo.label}
-                          </Badge>
-                        </div>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        <Badge className={`${typeInfo.color} px-2 py-0.5 rounded text-xs`}>
+                          {typeInfo.label}
+                        </Badge>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">{item.wacik || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">{item.wbelge || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(item.wvade)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right text-red-600">
-                        {parseFloat(item.wborc) > 0 ? formatCurrency(item.wborc) : '-'}
+                      <td className="px-2 py-2 text-xs text-gray-700 max-w-[150px] truncate" title={item.wacik}>
+                        {item.wacik || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right text-green-600">
-                        {parseFloat(item.walacak) > 0 ? formatCurrency(item.walacak) : '-'}
+                      <td className="px-2 py-2 whitespace-nowrap text-xs font-mono text-gray-600">
+                        {item.wbelge || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-right">
+                      <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-600">
+                        {formatDate(item.wvade)}
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-right text-red-600">
+                        {parseFloat(item.wborc) > 0 ? `-${formatCurrency(item.wborc)}` : '-'}
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-right text-green-600">
+                        {parseFloat(item.walacak) > 0 ? `+${formatCurrency(item.walacak)}` : '-'}
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap text-xs font-bold text-right">
                         <span className={parseFloat(item.wbakiye) >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {formatCurrency(Math.abs(parseFloat(item.wbakiye) || 0))}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        {showDetail && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedExtract(item)
-                              setCurrentView('detail')
-                              setDetailFkn(item?.wfkn || item?.fkn || item?.wFkn || null) // << önemli
-                            }}
-                          >
-                            <EyeIcon className="w-4 h-4 mr-2" />
-                            Detay
-                          </Button>
-                        )}
+                      <td className="px-2 py-2 whitespace-nowrap text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedExtract(item)
+                            setCurrentView('detail')
+                            setDetailFkn(item?.wfkn || item?.fkn || item?.wFkn || null)
+                          }}
+                          className="p-1"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                   )
