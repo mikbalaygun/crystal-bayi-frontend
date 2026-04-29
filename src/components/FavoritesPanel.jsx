@@ -129,7 +129,8 @@ export default function FavoritesPanel({ isOpen, setIsOpen }) {
       cinsi: product.cinsi || 'TRY',
       birim: product.birim,
       adet: quantity,
-      quantity
+      quantity,
+      imageUrl: product.imageUrl || null
     }, quantity)
     
     setIsOpen(false)
@@ -161,7 +162,8 @@ export default function FavoritesPanel({ isOpen, setIsOpen }) {
         cinsi: product.cinsi || 'TRY',
         birim: product.birim,
         adet: quantity,
-        quantity
+        quantity,
+        imageUrl: product.imageUrl || null
       }, quantity)
     })
     setIsOpen(false)
